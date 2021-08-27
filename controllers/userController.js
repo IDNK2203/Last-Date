@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const AppError = require("./../utils/appError");
 
+
 exports.getProfile = async (req, res, next) => {
   try {
     // get User Id from req.user object
