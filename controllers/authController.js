@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
+const AppError = require("./../utils/appError");
 
 const createToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -46,7 +47,7 @@ exports.register = async (req, res, next) => {
     await sendTokenAndResData(res, 201, user);
   } catch (error) {
     console.log(error);
-    res.send("An error has occured");
+    next(error);
   }
 };
 
@@ -59,19 +60,19 @@ exports.login = async (req, res, next) => {
     // 2@ check if user exists
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
-      return res.send("This user doesn't exist anymore");
+      return next(new AppError("This user doesn't exist anymore", 404));
     }
     // 3@ check if user password is correct
     if (
       (await user.passwordCheck(req.body.password, user.password)) === false
     ) {
-      return res.send("Incorrect password");
+      return next(new AppError("Incorrect password", 400));
     }
     // @4 recreate JWT token & stuff inside cookie and send to client
     await sendTokenAndResData(res, 200, user);
   } catch (error) {
     console.log(error);
-    res.send("An error has occured");
+    next(error);
   }
 };
 
@@ -105,8 +106,11 @@ exports.protect = async (req, res, next) => {
     }
 
     if (!token) {
-      return res.send(
-        "you are not logged in please log in to view this resource"
+      return next(
+        new AppError(
+          "you are not logged in please log in to view this resource",
+          401
+        )
       );
     }
     // CHECKS
@@ -117,15 +121,14 @@ exports.protect = async (req, res, next) => {
     // @4 check if user exists
     const user = await User.findById(decodedToken.id);
     if (!user) {
-      return res.send("This user doesn't exist anymore");
+      return next(new AppError("This user doesn't exist anymore", 404));
     }
-    // @5 users password has been updated
 
     // @6 parser user data in req.user
     req.user = user.id;
     next();
   } catch (error) {
     console.log(error);
-    res.send("An error has occured");
+    next(error);
   }
 };
